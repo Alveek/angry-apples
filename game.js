@@ -10,7 +10,7 @@ const NITRO_SPEED = 80;
 const PREY_SPEED = 200;
 const PREY_BOOST_SPEED = 100;
 const HUNTER_SPEED = 130;
-const HUNTER_INTERVAL = 5;
+const HUNTER_INTERVAL = 3;
 const HUNTER_SCORE = 50;
 const TAIL_PENALTY = 10;
 const NITRO_MAX = 40;
@@ -87,9 +87,9 @@ function getNitroColor(pct) {
 
 function isOpposite(dir, next) {
     return (dir.x === 1 && next.x === -1) ||
-           (dir.x === -1 && next.x === 1) ||
-           (dir.y === 1 && next.y === -1) ||
-           (dir.y === -1 && next.y === 1);
+        (dir.x === -1 && next.x === 1) ||
+        (dir.y === 1 && next.y === -1) ||
+        (dir.y === -1 && next.y === 1);
 }
 
 function findHunterMove(hunter, target, snake) {
@@ -139,123 +139,123 @@ function findHunterMove(hunter, target, snake) {
 
 const SoundManager = typeof window !== 'undefined' && window.AudioContext
     ? class SoundManager {
-          constructor() {
-              this.ctx = null;
-              this.muted = false;
-              this.initialized = false;
-          }
+        constructor() {
+            this.ctx = null;
+            this.muted = false;
+            this.initialized = false;
+        }
 
-          init() {
-              if (this.initialized) {
-                  if (this.ctx && this.ctx.state === 'suspended') {
-                      this.ctx.resume();
-                  }
-                  return;
-              }
-              try {
-                  this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                  this.initialized = true;
-              } catch (e) {
-                  console.warn('Web Audio API not supported:', e);
-              }
-          }
+        init() {
+            if (this.initialized) {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+                return;
+            }
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.initialized = true;
+            } catch (e) {
+                console.warn('Web Audio API not supported:', e);
+            }
+        }
 
-          _play(freq, type, duration, volume) {
-              if (!this.initialized || this.muted) return;
-              if (this.ctx.state === 'suspended') this.ctx.resume();
-              const t = this.ctx.currentTime;
-              const osc = this.ctx.createOscillator();
-              const gain = this.ctx.createGain();
-              osc.type = type;
-              osc.frequency.setValueAtTime(freq, t);
-              gain.gain.setValueAtTime(volume, t);
-              gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-              osc.connect(gain).connect(this.ctx.destination);
-              osc.start(t);
-              osc.stop(t + duration);
-          }
+        _play(freq, type, duration, volume) {
+            if (!this.initialized || this.muted) return;
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            const t = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(volume, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+            osc.connect(gain).connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + duration);
+        }
 
-          playPickup() {
-              if (!this.initialized) return;
-              this._play(600, 'sine', 0.12, 0.25);
-              this._play(1200, 'sine', 0.08, 0.15);
-          }
+        playPickup() {
+            if (!this.initialized) return;
+            this._play(600, 'sine', 0.12, 0.25);
+            this._play(1200, 'sine', 0.08, 0.15);
+        }
 
-          playHunterSpawn() {
-              if (!this.initialized) return;
-              if (this.ctx.state === 'suspended') this.ctx.resume();
-              const t = this.ctx.currentTime;
-              const osc = this.ctx.createOscillator();
-              const lfo = this.ctx.createOscillator();
-              const gain = this.ctx.createGain();
-              const lfoGain = this.ctx.createGain();
-              osc.type = 'sawtooth';
-              osc.frequency.setValueAtTime(150, t);
-              lfo.type = 'sine';
-              lfo.frequency.setValueAtTime(8, t);
-              lfoGain.gain.setValueAtTime(15, t);
-              gain.gain.setValueAtTime(0.2, t);
-              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-              lfo.connect(lfoGain).connect(osc.frequency);
-              osc.connect(gain).connect(this.ctx.destination);
-              osc.start(t);
-              lfo.start(t);
-              osc.stop(t + 0.5);
-              lfo.stop(t + 0.5);
-          }
+        playHunterSpawn() {
+            if (!this.initialized) return;
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            const t = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const lfo = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const lfoGain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, t);
+            lfo.type = 'sine';
+            lfo.frequency.setValueAtTime(8, t);
+            lfoGain.gain.setValueAtTime(15, t);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+            lfo.connect(lfoGain).connect(osc.frequency);
+            osc.connect(gain).connect(this.ctx.destination);
+            osc.start(t);
+            lfo.start(t);
+            osc.stop(t + 0.5);
+            lfo.stop(t + 0.5);
+        }
 
-          playTailEaten() {
-              if (!this.initialized) return;
-              this._play(400, 'sawtooth', 0.2, 0.2);
-          }
+        playTailEaten() {
+            if (!this.initialized) return;
+            this._play(400, 'sawtooth', 0.2, 0.2);
+        }
 
-          playHunterDefeat() {
-              if (!this.initialized) return;
-              if (this.ctx.state === 'suspended') this.ctx.resume();
-              const notes = [
-                  { freq: 784, delay: 0 },
-                  { freq: 880, delay: 0.1 },
-                  { freq: 1047, delay: 0.2 }
-              ];
-              for (const n of notes) {
-                  const t = this.ctx.currentTime + n.delay;
-                  const osc = this.ctx.createOscillator();
-                  const gain = this.ctx.createGain();
-                  osc.type = 'square';
-                  osc.frequency.setValueAtTime(n.freq, t);
-                  gain.gain.setValueAtTime(0.15, t);
-                  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-                  osc.connect(gain).connect(this.ctx.destination);
-                  osc.start(t);
-                  osc.stop(t + 0.15);
-              }
-          }
+        playHunterDefeat() {
+            if (!this.initialized) return;
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            const notes = [
+                { freq: 784, delay: 0 },
+                { freq: 880, delay: 0.1 },
+                { freq: 1047, delay: 0.2 }
+            ];
+            for (const n of notes) {
+                const t = this.ctx.currentTime + n.delay;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(n.freq, t);
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                osc.connect(gain).connect(this.ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.15);
+            }
+        }
 
-          playGameOver() {
-              if (!this.initialized) return;
-              if (this.ctx.state === 'suspended') this.ctx.resume();
-              const t = this.ctx.currentTime;
-              const osc = this.ctx.createOscillator();
-              const gain = this.ctx.createGain();
-              osc.type = 'triangle';
-              osc.frequency.setValueAtTime(330, t);
-              osc.frequency.linearRampToValueAtTime(80, t + 0.8);
-              gain.gain.setValueAtTime(0.25, t);
-              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-              osc.connect(gain).connect(this.ctx.destination);
-              osc.start(t);
-              osc.stop(t + 1.0);
-          }
-      }
+        playGameOver() {
+            if (!this.initialized) return;
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+            const t = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(330, t);
+            osc.frequency.linearRampToValueAtTime(80, t + 0.8);
+            gain.gain.setValueAtTime(0.25, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+            osc.connect(gain).connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 1.0);
+        }
+    }
     : class SoundManager {
-          constructor() { this.muted = false; this.initialized = false; }
-          init() {}
-          playPickup() {}
-          playHunterSpawn() {}
-          playTailEaten() {}
-          playHunterDefeat() {}
-          playGameOver() {}
-      };
+        constructor() { this.muted = false; this.initialized = false; }
+        init() { }
+        playPickup() { }
+        playHunterSpawn() { }
+        playTailEaten() { }
+        playHunterDefeat() { }
+        playGameOver() { }
+    };
 
 if (typeof Phaser !== 'undefined' && Phaser.Scene) {
 
@@ -765,7 +765,7 @@ if (typeof Phaser !== 'undefined' && Phaser.Scene) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-module.exports = {
+    module.exports = {
         CELL, COLS, ROWS, UI_HEIGHT, WIDTH, HEIGHT,
         BASE_SPEED, NITRO_SPEED, PREY_SPEED, PREY_BOOST_SPEED,
         HUNTER_SPEED, HUNTER_INTERVAL, HUNTER_SCORE, TAIL_PENALTY,
