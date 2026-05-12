@@ -1,0 +1,7 @@
+[     312ms] [WARNING] WebGL: CONTEXT_LOST_WEBGL: loseContext: context lost @ http://localhost:8080/:27
+[     373ms] [LOG] %c %c %c %c %c Phaser v3.87 (WebGL | Web Audio) %c https://phaser.io/v387 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent @ https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:0
+[     706ms] [WARNING] [.WebGL-0x1fc4000f0e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:8080/:0
+[     720ms] [WARNING] [.WebGL-0x1fc4000f0e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:8080/:0
+[     750ms] [WARNING] [.WebGL-0x1fc4000f0e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels @ http://localhost:8080/:0
+[     784ms] [WARNING] [.WebGL-0x1fc4000f0e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat) @ http://localhost:8080/:0
+[     807ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8080/favicon.ico:0

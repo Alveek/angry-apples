@@ -1,0 +1,12 @@
+[     404ms] [LOG] %c %c %c %c %c Phaser v3.87 (WebGL | Web Audio) %c https://phaser.io/v387 background: #ff0000 background: #ffff00 background: #00ff00 background: #00ffff color: #ffffff; background: #000000 background: transparent @ https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:0
+[   20571ms] TypeError: this.prey.destroy is not a function
+    at GameScene.spawnPrey (http://localhost:8080/game.js:188:34)
+    at GameScene.create (http://localhost:8080/game.js:119:14)
+    at initialize.create (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:962177)
+    at initialize.bootScene (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:961525)
+    at initialize.start (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:965302)
+    at initialize.processQueue (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:960226)
+    at initialize.update (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:961662)
+    at initialize.step (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:75981)
+    at initialize.step (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:80280)
+    at e (https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js:1:141005)
