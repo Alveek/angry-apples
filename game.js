@@ -134,17 +134,166 @@ function findHunterMove(hunter, target, snake) {
     return null;
 }
 
-if (typeof module !== 'undefined' && module.exports) {
-module.exports = {
-        CELL, COLS, ROWS, UI_HEIGHT, WIDTH, HEIGHT,
-        BASE_SPEED, NITRO_SPEED, PREY_SPEED, PREY_BOOST_SPEED,
-        HUNTER_SPEED, HUNTER_INTERVAL, HUNTER_SCORE, TAIL_PENALTY,
-        NITRO_MAX, NITRO_DRAIN, NITRO_RECHARGE,
-        calcNewHead, checkWallCollision, checkSelfCollision,
-        calcPreyDirection, findPreyMove, updateNitroValue,
-        getNitroColor, isOpposite, findHunterMove
-    };
-}
+// ═══════════════════════════════════════════════════════════════
+// Sound Manager — Web Audio API, программный синтез
+// ═══════════════════════════════════════════════════════════════
+
+const SoundManager = typeof window !== 'undefined' && window.AudioContext
+    ? class SoundManager {
+          constructor() {
+              this.ctx = null;
+              this.muted = false;
+              this.initialized = false;
+          }
+
+          init() {
+              if (this.initialized) return;
+              try {
+                  this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                  this.initialized = true;
+              } catch (e) {
+                  console.warn('Web Audio API not supported:', e);
+              }
+          }
+
+          _play(freq, type, duration, volume, detune) {
+              if (!this.initialized || this.muted) return;
+              if (this.ctx.state === 'suspended') this.ctx.resume();
+              const t = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = type;
+              osc.frequency.setValueAtTime(freq, t);
+              if (detune) osc.detune.setValueAtTime(detune, t);
+              gain.gain.setValueAtTime(volume, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(t);
+              osc.stop(t + duration);
+          }
+
+          _playNoise(duration, volume) {
+              if (!this.initialized || this.muted) return;
+              if (this.ctx.state === 'suspended') this.ctx.resume();
+              const t = this.ctx.currentTime;
+              const bufSize = this.ctx.sampleRate * duration;
+              const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+              const data = buf.getChannelData(0);
+              for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+              const src = this.ctx.createBufferSource();
+              const gain = this.ctx.createGain();
+              src.buffer = buf;
+              gain.gain.setValueAtTime(volume, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+              src.connect(gain).connect(this.ctx.destination);
+              src.start(t);
+          }
+
+          playPickup() {
+              this._play(600, 'sine', 0.12, 0.25);
+              this._play(1200, 'sine', 0.08, 0.15, 0);
+              // slight delay for the higher pitch
+              if (this.ctx) {
+                  const t = this.ctx.currentTime;
+                  const osc = this.ctx.createOscillator();
+                  const gain = this.ctx.createGain();
+                  osc.type = 'sine';
+                  osc.frequency.setValueAtTime(1200, t + 0.03);
+                  gain.gain.setValueAtTime(0.15, t + 0.03);
+                  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                  osc.connect(gain).connect(this.ctx.destination);
+                  osc.start(t + 0.03);
+                  osc.stop(t + 0.15);
+              }
+          }
+
+          playHunterSpawn() {
+              // Low ominous drone with vibrato
+              const t = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const lfo = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              const lfoGain = this.ctx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(150, t);
+              lfo.type = 'sine';
+              lfo.frequency.setValueAtTime(8, t);
+              lfoGain.gain.setValueAtTime(15, t);
+              gain.gain.setValueAtTime(0.2, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+              lfo.connect(lfoGain).connect(osc.frequency);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(t);
+              lfo.start(t);
+              osc.stop(t + 0.5);
+              lfo.stop(t + 0.5);
+          }
+
+          playTailEaten() {
+              this._play(400, 'sawtooth', 0.2, 0.2);
+              // second layer, lower
+              if (this.ctx) {
+                  const t = this.ctx.currentTime;
+                  const osc = this.ctx.createOscillator();
+                  const gain = this.ctx.createGain();
+                  osc.type = 'square';
+                  osc.frequency.setValueAtTime(200, t);
+                  gain.gain.setValueAtTime(0.1, t);
+                  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                  osc.connect(gain).connect(this.ctx.destination);
+                  osc.start(t);
+                  osc.stop(t + 0.15);
+              }
+          }
+
+          playHunterDefeat() {
+              // Triumphant ascending notes: G5 -> A5 -> C6
+              const notes = [
+                  { freq: 784, delay: 0 },
+                  { freq: 880, delay: 0.1 },
+                  { freq: 1047, delay: 0.2 }
+              ];
+              for (const n of notes) {
+                  if (this.ctx) {
+                      const t = this.ctx.currentTime + n.delay;
+                      const osc = this.ctx.createOscillator();
+                      const gain = this.ctx.createGain();
+                      osc.type = 'square';
+                      osc.frequency.setValueAtTime(n.freq, t);
+                      gain.gain.setValueAtTime(0.15, t);
+                      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                      osc.connect(gain).connect(this.ctx.destination);
+                      osc.start(t);
+                      osc.stop(t + 0.15);
+                  }
+              }
+          }
+
+          playGameOver() {
+              // Descending mournful tone
+              const t = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(330, t);
+              osc.frequency.linearRampToValueAtTime(80, t + 0.8);
+              gain.gain.setValueAtTime(0.25, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+              osc.connect(gain).connect(this.ctx.destination);
+              osc.start(t);
+              osc.stop(t + 1.0);
+          }
+      }
+    : class SoundManager {
+          // Stub for Node.js environment
+          constructor() { this.muted = false; this.initialized = false; }
+          init() {}
+          playPickup() {}
+          playHunterSpawn() {}
+          playTailEaten() {}
+          playHunterDefeat() {}
+          playGameOver() {}
+      };
 
 if (typeof Phaser !== 'undefined' && Phaser.Scene) {
 
@@ -153,31 +302,34 @@ if (typeof Phaser !== 'undefined' && Phaser.Scene) {
             super('GameScene');
         }
 
-        create() {
-            this.snake = [];
-            this.direction = Phaser.Math.Vector2.RIGHT;
-            this.nextDirection = Phaser.Math.Vector2.RIGHT;
-            this.moveTimer = 0;
-            this.score = 0;
-            this.gameOver = false;
-            this.nitro = NITRO_MAX;
-            this.nitroActive = false;
-            this.preyMoveTimer = 0;
-            this.preyBoostActive = false;
-            this.preyBoostTimer = 0;
-            this.preyBoostCooldown = 0;
-            this.paused = false;
-            this.hunter = null;
-            this.preyEatenCount = 0;
-            this.hunterMode = false;
+create() {
+             this.soundManager = new SoundManager();
+             this.soundManager.init();
 
-            this.createTextures();
-            this.createBackground();
-            this.initSnake();
-            this.spawnPrey();
-            this.createUI();
-            this.setupInput();
-        }
+             this.snake = [];
+             this.direction = Phaser.Math.Vector2.RIGHT;
+             this.nextDirection = Phaser.Math.Vector2.RIGHT;
+             this.moveTimer = 0;
+             this.score = 0;
+             this.gameOver = false;
+             this.nitro = NITRO_MAX;
+             this.nitroActive = false;
+             this.preyMoveTimer = 0;
+             this.preyBoostActive = false;
+             this.preyBoostTimer = 0;
+             this.preyBoostCooldown = 0;
+             this.paused = false;
+             this.hunter = null;
+             this.preyEatenCount = 0;
+             this.hunterMode = false;
+
+             this.createTextures();
+             this.createBackground();
+             this.initSnake();
+             this.spawnPrey();
+             this.createUI();
+             this.setupInput();
+         }
 
         createTextures() {
             const g = this.make.graphics({ x: 0, y: 0, add: false });
@@ -287,31 +439,32 @@ spawnPrey() {
         };
     }
 
-    spawnHunter() {
-        if (this.hunter) this.hunter.sprite.destroy();
+spawnHunter() {
+         if (this.hunter) this.hunter.sprite.destroy();
 
-        // Spawn hunter near the snake head so it can chase immediately
-        const head = this.snake[0];
-        let x, y, valid;
-        let attempts = 0;
-        do {
-            const angle = Math.random() * Math.PI * 2;
-            const dist = Phaser.Math.Between(4, 8);
-            x = Math.round(head.x + Math.cos(angle) * dist);
-            y = Math.round(head.y + Math.sin(angle) * dist);
-            x = Phaser.Math.Clamp(x, 1, COLS - 2);
-            y = Phaser.Math.Clamp(y, 1, ROWS - 2);
-            valid = !this.snake.some(s => s.x === x && s.y === y);
-            attempts++;
-        } while (!valid && attempts < 50);
+         // Spawn hunter near the snake head so it can chase immediately
+         const head = this.snake[0];
+         let x, y, valid;
+         let attempts = 0;
+         do {
+             const angle = Math.random() * Math.PI * 2;
+             const dist = Phaser.Math.Between(4, 8);
+             x = Math.round(head.x + Math.cos(angle) * dist);
+             y = Math.round(head.y + Math.sin(angle) * dist);
+             x = Phaser.Math.Clamp(x, 1, COLS - 2);
+             y = Phaser.Math.Clamp(y, 1, ROWS - 2);
+             valid = !this.snake.some(s => s.x === x && s.y === y);
+             attempts++;
+         } while (!valid && attempts < 50);
 
-        this.hunterMode = true;
-        this.prey = null;
-        this.hunter = {
-            x, y,
-            sprite: this.add.sprite(x * CELL + CELL / 2, y * CELL + CELL / 2 + UI_HEIGHT, 'hunter')
-                .setDepth(11)
-        };
+         this.hunterMode = true;
+         this.prey = null;
+         this.hunter = {
+             x, y,
+             sprite: this.add.sprite(x * CELL + CELL / 2, y * CELL + CELL / 2 + UI_HEIGHT, 'hunter')
+                 .setDepth(11)
+         };
+         this.soundManager.playHunterSpawn();
 
         // Flash warning
         this.hunter.sprite.setTint(0xff0000);
@@ -348,11 +501,22 @@ spawnPrey() {
             this.nitroBar = this.add.rectangle(WIDTH - 69, 22, 48, 12, 0xf0a500)
                 .setDepth(101).setScrollFactor(0).setOrigin(0, 0.5);
 
-            this.controlsText = this.add.text(WIDTH / 2, 46, '\u2191\u2193\u2190\u2192 / WASD \u2014 move  |  SPACE \u2014 nitro  |  ENTER \u2014 pause', {
-                fontSize: '13px',
-                fill: '#556688',
-                fontFamily: 'monospace'
-            }).setDepth(100).setOrigin(0.5, 0).setScrollFactor(0);
+this.controlsText = this.add.text(WIDTH / 2, 46, '\u2191\u2193\u2190\u2192 / WASD \u2014 move  |  SPACE \u2014 nitro  |  ENTER \u2014 pause  |  M \u2014 mute', {
+                 fontSize: '13px',
+                 fill: '#556688',
+                 fontFamily: 'monospace'
+             }).setDepth(100).setOrigin(0.5, 0).setScrollFactor(0);
+
+             this.muteText = this.add.text(WIDTH - 10, 52, '\ud83d\udd0a', {
+                 fontSize: '18px',
+                 fill: '#556688',
+                 fontFamily: 'monospace'
+             }).setDepth(100).setOrigin(1, 0.5).setScrollFactor(0).setInteractive();
+
+             this.muteText.on('pointerdown', () => {
+                 this.soundManager.muted = !this.soundManager.muted;
+                 this.muteText.setText(this.soundManager.muted ? '\ud83d\udd07' : '\ud83d\udd0a');
+             });
 
             const gameCenterY = UI_HEIGHT + (CELL * ROWS) / 2;
             this.pauseText = this.add.text(WIDTH / 2, gameCenterY, 'PAUSED', {
@@ -388,14 +552,21 @@ spawnPrey() {
             this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
             this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
-            this.input.keyboard.on('keydown-ENTER', () => {
-                if (this.gameOver) {
-                    this.scene.restart();
-                } else {
-                    this.paused = !this.paused;
-                    this.pauseText.setVisible(this.paused);
-                }
-            });
+this.input.keyboard.on('keydown-ENTER', () => {
+                 if (this.gameOver) {
+                     this.scene.restart();
+                 } else {
+                     this.paused = !this.paused;
+                     this.pauseText.setVisible(this.paused);
+                 }
+             });
+
+             this.input.keyboard.on('keydown-M', () => {
+                 this.soundManager.muted = !this.soundManager.muted;
+                 if (this.muteText) {
+                     this.muteText.setText(this.soundManager.muted ? '\ud83d\udd07' : '\ud83d\udd0a');
+                 }
+             });
         }
 
         handleInput() {
@@ -470,14 +641,15 @@ moveSnake() {
              }
 
 if (ateHunter) {
-                 this.hunter.sprite.destroy();
-                 this.hunter = null;
-                 this.hunterMode = false;
-                 this.score += HUNTER_SCORE;
-                 this.scoreText.setText('Score: ' + this.score);
-                 this.spawnPrey();
-                 this.cameras.main.shake(200, 0.02);
-             }
+                  this.hunter.sprite.destroy();
+                  this.hunter = null;
+                  this.hunterMode = false;
+                  this.score += HUNTER_SCORE;
+                  this.scoreText.setText('Score: ' + this.score);
+                  this.soundManager.playHunterDefeat();
+                  this.spawnPrey();
+                  this.cameras.main.shake(200, 0.02);
+              }
          }
 
 movePrey() {
@@ -511,10 +683,11 @@ movePrey() {
              if (this.hunter.x === tail.x && this.hunter.y === tail.y) {
                  const eaten = this.snake.pop();
                  eaten.sprite.destroy();
-                 this.score = Math.max(0, this.score - TAIL_PENALTY);
-                 this.scoreText.setText('Score: ' + this.score);
+this.score = Math.max(0, this.score - TAIL_PENALTY);
+                  this.scoreText.setText('Score: ' + this.score);
+                  this.soundManager.playTailEaten();
 
-                 // Flash effect on the position where tail was eaten
+                  // Flash effect on the position where tail was eaten
                  this.cameras.main.shake(80, 0.01);
 
                  if (this.snake.length <= 1) {
@@ -525,21 +698,28 @@ movePrey() {
          }
      }
 
-    updateNitro(dt) {
-            this.nitro = updateNitroValue(this.nitro, this.nitroActive, dt);
-            if (this.nitroActive && this.nitro <= 0) this.nitroActive = false;
+updateNitro(dt) {
+             const prevPct = this.nitro / NITRO_MAX;
+             this.nitro = updateNitroValue(this.nitro, this.nitroActive, dt);
+             if (this.nitroActive && this.nitro <= 0) this.nitroActive = false;
 
-            const pct = this.nitro / NITRO_MAX;
-            this.nitroBar.setSize(48 * pct, 12);
-            this.nitroBar.setFillStyle(getNitroColor(pct));
-        }
+             const pct = this.nitro / NITRO_MAX;
+             this.nitroBar.setSize(48 * pct, 12);
+             this.nitroBar.setFillStyle(getNitroColor(pct));
 
-        triggerGameOver() {
-            this.gameOver = true;
-            this.physics?.pause?.();
-            this.cameras.main.shake(300, 0.02);
+             // Sound tick when draining
+             if (this.nitroActive && prevPct > 0 && Math.floor(pct * 10) !== Math.floor(prevPct * 10)) {
+                 this.soundManager._play(300, 'square', 0.05, 0.08);
+             }
+         }
 
-            this.gameOverText.setVisible(true);
+triggerGameOver() {
+             this.gameOver = true;
+             this.physics?.pause?.();
+             this.cameras.main.shake(300, 0.02);
+             this.soundManager.playGameOver();
+
+             this.gameOverText.setVisible(true);
             this.restartText.setVisible(true);
             this.finalScoreText.setText('Score: ' + this.score).setVisible(true);
 
@@ -616,4 +796,16 @@ updatePreyBoost(dt) {
 
     window.game = new Phaser.Game(config);
 
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+module.exports = {
+        CELL, COLS, ROWS, UI_HEIGHT, WIDTH, HEIGHT,
+        BASE_SPEED, NITRO_SPEED, PREY_SPEED, PREY_BOOST_SPEED,
+        HUNTER_SPEED, HUNTER_INTERVAL, HUNTER_SCORE, TAIL_PENALTY,
+        NITRO_MAX, NITRO_DRAIN, NITRO_RECHARGE,
+        calcNewHead, checkWallCollision, checkSelfCollision,
+        calcPreyDirection, findPreyMove, updateNitroValue,
+        getNitroColor, isOpposite, findHunterMove
+    };
 }
